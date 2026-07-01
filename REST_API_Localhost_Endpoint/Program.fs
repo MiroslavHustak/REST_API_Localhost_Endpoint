@@ -16,7 +16,7 @@ open ApiKeys.Secrets
 //!!! Copilot-assisted code, code review needed before releasing into production !!!
 //----------------------------------------------------------------------------------
 
-module Program =
+module Program =  //Kestrel
 
     [<EntryPoint>]
     let main args =
