@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+        <OutputType>Exe</OutputType>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="CEBuilders\CEBuilders.fs" />
+        <Compile Include="OptionResultExtensions\OptionExtensions.fs" />
+        <Compile Include="OptionResultExtensions\ResultExtensions.fs" />
+        <Compile Include="Secrets\ApiKeys.fs" />
+        <Compile Include="Handlers.fs" />
+        <Compile Include="Program.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />
+        <PackageReference Include="Giraffe" Version="7.0.2" />
+        <PackageReference Include="Saturn" Version="0.17.0" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
+        <PackageReference Include="Thoth.Json.Net" Version="12.0.0" />
+        <PackageReference Include="FsHttp" Version="14.5.0" />
+    </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "REST_API_Localhost_Endpoint": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:58570;http://localhost:58571"
+    }
+  }
+}
