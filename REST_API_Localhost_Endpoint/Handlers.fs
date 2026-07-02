@@ -77,19 +77,17 @@ module Handlers =
                     let! result = 
                         asyncResult 
                             {
-                                // 1. Configure Kestrel Request Limit
                                 do! 
                                     match ctx.Features.Get<IHttpMaxRequestBodySizeFeature>() |> Option.ofNull' with
                                     | Some feature
                                         ->
-                                        feature.MaxRequestBodySize <- System.Nullable 500_000_000L
+                                        feature.MaxRequestBodySize <- System.Nullable 500_000_000L //Kestrel limit
                                         Ok ()
                                     | None
                                         -> 
                                         Ok ()
     
-                                // 2. Configure Multipart Form Size Limit
-                                let formOptions = FormOptions(MultipartBodyLengthLimit = 500_000_000L)
+                                let formOptions = FormOptions(MultipartBodyLengthLimit = 500_000_000L)  //Multipart body limit
                                 ctx.Features.Set<IFormFeature>(FormFeature(ctx.Request, formOptions))
     
                                 do! 
