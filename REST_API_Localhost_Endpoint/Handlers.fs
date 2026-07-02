@@ -14,7 +14,7 @@ open Helpers
 //!!! Copilot-assisted code, code review needed before releasing into production !!!
 //----------------------------------------------------------------------------------
 
-// Using Kestrel, not IIS here
+// Kestrel
 module Handlers =   
     
     type private UploadError =
