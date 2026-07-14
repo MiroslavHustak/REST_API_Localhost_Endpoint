@@ -9,6 +9,7 @@
         <Compile Include="CEBuilders\CEBuilders.fs" />
         <Compile Include="OptionResultExtensions\OptionExtensions.fs" />
         <Compile Include="OptionResultExtensions\ResultExtensions.fs" />
+        <Compile Include="NetworkUtils.fs" />
         <Compile Include="Secrets\ApiKeys.fs" />
         <Compile Include="Handlers.fs" />
         <Compile Include="Program.fs" />

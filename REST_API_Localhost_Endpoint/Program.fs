@@ -63,10 +63,12 @@ module Program =  //Kestrel
 
         let app =
 
+            let localIp = sprintf "%s%s:5000" <| @"http://" <| NetworkUtils.getLocalIPv4 ()
+
             application 
                 {
                     use_router apiRouter
-                    url "http://192.168.1.20:5000"  //IIS hosting does not bind to IP/port inside the app, Saturn’s url setting binds Kestrel directly to a socket.
+                    url localIp  //IIS hosting does not bind to IP/port inside the app, Saturn’s url setting binds Kestrel directly to a socket.
                     memory_cache
                     use_static "static"
                     use_gzip
