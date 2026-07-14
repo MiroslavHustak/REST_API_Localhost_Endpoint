@@ -35,11 +35,11 @@ module Handlers =
     
     let private getSafeFileName (formFile: IFormFile) =
         
-        try
+        try            
             let rawName =            
-                match Option.ofNullEmptySpace formFile.Name with
-                | Some name -> name
-                | None      -> formFile.FileName
+                formFile.Name 
+                |> Option.ofNullEmptySpace 
+                |> Option.defaultValue formFile.FileName    
     
             let sanitized =
                 try
@@ -54,7 +54,8 @@ module Handlers =
                             (fun c 
                                 -> 
                                 match c with
-                                | c when Char.IsLetterOrDigit c || c = '.' || c = '-' || c = '_' -> c
+                                | c when Char.IsLetterOrDigit c || c = '.' || c = '-' || c = '_'
+                                    -> c
                                 | _ -> '_'
                             )
                         |> System.String.Concat
@@ -81,13 +82,13 @@ module Handlers =
                                     match ctx.Features.Get<IHttpMaxRequestBodySizeFeature>() |> Option.ofNull' with
                                     | Some feature
                                         ->
-                                        feature.MaxRequestBodySize <- System.Nullable 500_000_000L //Kestrel limit
+                                        feature.MaxRequestBodySize <- System.Nullable 1_000_000_000L //App-defined upload cap; Kestrel itself allows any value or null for unlimited
                                         Ok ()
                                     | None
                                         -> 
                                         Ok ()
     
-                                let formOptions = FormOptions(MultipartBodyLengthLimit = 500_000_000L)  //Multipart body limit
+                                let formOptions = FormOptions(MultipartBodyLengthLimit = 1_000_000_000L)  //Multipart body limit
                                 ctx.Features.Set<IFormFeature>(FormFeature(ctx.Request, formOptions))
     
                                 do! 

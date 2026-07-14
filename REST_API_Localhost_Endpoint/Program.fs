@@ -10,6 +10,7 @@ open Saturn
 open Giraffe
 
 open Handlers
+open Helpers
 open ApiKeys.Secrets
 
 //----------------------------------------------------------------------------------
@@ -17,6 +18,12 @@ open ApiKeys.Secrets
 //----------------------------------------------------------------------------------
 
 module Program =  //Kestrel
+
+    let private failFast (message: string) : 'a =
+        eprintfn "FATAL: %s" message
+        Console.WriteLine "Press any key to exit..."
+        Console.ReadKey true |> ignore
+        exit 1
 
     [<EntryPoint>]
     let main args =
@@ -28,15 +35,29 @@ module Program =  //Kestrel
             match loadApiKey apiKeySecretsPath with
             | Ok secrets 
                 when not (String.IsNullOrWhiteSpace secrets.ApiKey) 
-                -> 
-                secrets.ApiKey
-            | _ 
-               ->
-                eprintfn "FATAL: Could not load API key from secrets.json — refusing to start"
-                exit 1
+                -> secrets.ApiKey
+            | _ -> failFast "Could not load API key from secrets.json — refusing to start"
 
         let uploadDir = Path.Combine(AppContext.BaseDirectory, "uploads")
-        Directory.CreateDirectory uploadDir |> ignore
+
+        try
+            Directory.CreateDirectory uploadDir |> ignore<DirectoryInfo>
+        with
+        | ex -> failFast (sprintf "Could not create upload directory '%s': %s" uploadDir (string ex.Message))
+
+        let localIp =
+        
+            try
+                NetworkUtils.getLocalIPv4 ()
+            with
+            | ex -> failFast (sprintf "Could not determine local IPv4 address: %s" (string ex.Message))
+
+            |> Option.ofNullEmptySpace
+            |> Option.map (fun ip -> sprintf "%s%s:5000" @"http://" ip)
+            |> Option.defaultWith (fun (_) -> failFast "Local IPv4 address resolved to null/empty — refusing to bind")
+
+            // vyukova poznamka, kdybych pouzil defaultValue: defaultValue would take its fallback eagerly, 
+            // which would mean failFast "Local IPv4 address resolved to null/empty..." got evaluated (and the process killed) on every run, Some/None regardless, since F# evaluates function arguments before applying
 
         let validateApiKey (next: HttpFunc) (ctx: HttpContext) =
 
@@ -63,8 +84,6 @@ module Program =  //Kestrel
 
         let app =
 
-            let localIp = sprintf "%s%s:5000" <| @"http://" <| NetworkUtils.getLocalIPv4 ()
-
             application 
                 {
                     use_router apiRouter
@@ -88,6 +107,8 @@ module Program =  //Kestrel
                     )
                 }
 
-        run app
-
-        0
+        try
+            run app
+            0
+        with
+        | ex -> failFast (sprintf "Server terminated unexpectedly: %s" (string ex.Message))
