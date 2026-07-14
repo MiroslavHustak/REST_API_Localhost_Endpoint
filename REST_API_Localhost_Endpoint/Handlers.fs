@@ -133,6 +133,7 @@ module Handlers =
                                         savedTo = fullDestPath
                                     |}
                             }
+                        |> AsyncResult.catch (fun ex -> UploadFailed <| string ex.Message)
     
                     match result with
                     | Ok data 
