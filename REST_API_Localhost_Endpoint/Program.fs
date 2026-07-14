@@ -29,14 +29,17 @@ module Program =  //Kestrel
     let main args =
 
         let apiKey =
+            
+            async
+                {
+                    let apiKeySecretsPath = Path.Combine(AppContext.BaseDirectory, "Secrets", "secrets.json")
 
-            let apiKeySecretsPath = Path.Combine(AppContext.BaseDirectory, "Secrets", "secrets.json")
-
-            match loadApiKey apiKeySecretsPath with
-            | Ok secrets 
-                when not (String.IsNullOrWhiteSpace secrets.ApiKey) 
-                -> secrets.ApiKey
-            | _ -> failFast "Could not load API key from secrets.json — refusing to start"
+                    match! loadApiKeyAsync apiKeySecretsPath with
+                    | Ok secrets 
+                        when not (String.IsNullOrWhiteSpace secrets.ApiKey) 
+                        -> return secrets.ApiKey
+                    | _ -> return failFast "Could not load API key from secrets.json — refusing to start"
+                }
 
         let uploadDir = Path.Combine(AppContext.BaseDirectory, "uploads")
 
@@ -63,6 +66,8 @@ module Program =  //Kestrel
 
             task
                 {
+                    let! apiKey = apiKey |> Async.StartAsTask
+
                     match ctx.Request.Headers.TryGetValue "X-API-KEY" with
                     | true, key 
                         when string key = apiKey

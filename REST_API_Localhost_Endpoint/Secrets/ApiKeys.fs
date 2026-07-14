@@ -7,15 +7,10 @@ open Thoth.Json.Net
 open FsToolkit.ErrorHandling
 
 open Helpers
-   
-type [<Struct>] internal IO<'a> = IO of (unit -> 'a) // wrapping custom type simulating Haskell's IO Monad (without the monad, of course)
 
-let internal runIO (IO action) = action () 
-let internal runIOAsync (IO action) : Async<'a> = async { return action () }
- 
 type Secrets =
     {
-        ApiKey : string
+        ApiKey: string
     }
 
 module Secrets =
@@ -28,14 +23,24 @@ module Secrets =
                     ApiKey = get.Required.Field "ApiKey" Decode.string
                 }
             )
+               
+    let internal loadApiKeyAsync (path: string) =
 
-    let internal loadApiKey (path : string) : Result<Secrets, string> =
-        try
-            let fullPath = Path.Combine(AppContext.BaseDirectory, path) //AppContext.BaseDirectory always points to where your compiled app lives, regardless of what the process working directory happens to be
-            let json = System.IO.File.ReadAllText fullPath
-            Decode.fromString decoder json
-        with
-        | ex -> Error (sprintf "Failed to read secrets file: %s" (string ex.Message))
+          asyncResult
+              {
+                  let! fullPath = 
+                      Path.Combine(AppContext.BaseDirectory, path) 
+                      |> Option.ofNullEmptySpace //AppContext.BaseDirectory always points to where your compiled app lives, regardless of what the process working directory happens to be
+                      |> Option.toResult (sprintf "Failed to read secrets file")
+
+                  let! json = 
+                      System.IO.File.ReadAllTextAsync fullPath 
+                      |> Option.ofNullEmptySpace
+                      |> Option.toResult (sprintf "Failed to read secrets file")
+
+                  return! Decode.fromString decoder json
+              }
+          |> AsyncResult.catch (fun ex -> sprintf "Failed to read secrets file: %s" (string ex.Message))       
 
     (*
     Do <ItemGroup>
