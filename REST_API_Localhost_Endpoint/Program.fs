@@ -117,3 +117,30 @@ module Program =  //Kestrel
             0
         with
         | ex -> failFast (sprintf "Server terminated unexpectedly: %s" (string ex.Message))
+
+
+        (*
+        application
+            {
+            ... 
+            }
+
+        Thie CE in Saturn builds on top of Host.CreateDefaultBuilder/WebApplication under the hood. 
+        That default host builder automatically registers the Console logging provider (Microsoft.Extensions.Logging.Console).
+
+        Where the level is controlled: by default (no appsettings.json/appsettings.Production.json present, or with defaults inherited), the minimum log level is Information, which is why Diagnostics[1]/[2] show up.
+        If you want to quiet this down, you'd typically add an appsettings.json next to your exe like:
+        
+        json
+        {
+          "Logging": {
+            "LogLevel": {
+              "Default": "Warning",
+              "Microsoft.AspNetCore.Hosting.Diagnostics": "None"
+            }
+          }
+        }
+        
+        or configure it programmatically inside your host_config block via hostBuilder.ConfigureLogging(...), the same place you're already tweaking KestrelServerOptions.       
+        
+        *)
