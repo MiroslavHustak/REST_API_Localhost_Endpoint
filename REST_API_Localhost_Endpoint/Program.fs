@@ -66,7 +66,7 @@ module Program =  //Kestrel
 
             task
                 {
-                    let! apiKey = apiKey |> Async.StartAsTask
+                    let! apiKey = apiKey |> Async.StartAsTask 
 
                     match ctx.Request.Headers.TryGetValue "X-API-KEY" with
                     | true, key 
@@ -105,7 +105,7 @@ module Program =  //Kestrel
                                     services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>
                                         (fun (options: KestrelServerOptions) 
                                             ->
-                                            options.Limits.MaxRequestBodySize <- System.Nullable 500_000_000L
+                                            options.Limits.MaxRequestBodySize <- System.Nullable 1_000_000_000L
                                         ) 
                                     |> ignore<IServiceCollection>
                         )

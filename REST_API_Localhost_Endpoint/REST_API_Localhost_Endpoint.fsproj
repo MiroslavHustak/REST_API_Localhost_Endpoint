@@ -6,6 +6,9 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
+		<Content Update="Secrets\secrets.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
         <Compile Include="CEBuilders\CEBuilders.fs" />
         <Compile Include="OptionResultExtensions\OptionExtensions.fs" />
         <Compile Include="OptionResultExtensions\ResultExtensions.fs" />

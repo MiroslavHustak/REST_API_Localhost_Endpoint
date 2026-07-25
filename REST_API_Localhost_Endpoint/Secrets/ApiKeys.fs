@@ -33,10 +33,10 @@ module Secrets =
                       |> Option.ofNullEmptySpace //AppContext.BaseDirectory always points to where your compiled app lives, regardless of what the process working directory happens to be
                       |> Option.toResult (sprintf "Failed to read secrets file")
 
-                  let! json = 
-                      System.IO.File.ReadAllTextAsync fullPath 
-                      |> Option.ofNullEmptySpace
-                      |> Option.toResult (sprintf "Failed to read secrets file")
+                  let! json =
+                      System.IO.File.ReadAllTextAsync fullPath
+                      |> Async.AwaitTask
+                      |> Async.map (Option.ofNullEmptySpace >> Option.toResult "Failed to read secrets file")
 
                   return! Decode.fromString decoder json
               }
