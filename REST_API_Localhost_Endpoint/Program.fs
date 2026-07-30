@@ -108,8 +108,8 @@ module Program =  //Kestrel
                                             options.Limits.MaxRequestBodySize <- System.Nullable 1_000_000_000L
                                         ) 
                                     |> ignore<IServiceCollection>
+                                )
                         )
-                    )
                 }
 
         try
