@@ -20,9 +20,10 @@ open ApiKeys.Secrets
 module Program =  //Kestrel
 
     let private failFast (message: string) : 'a =
+
         eprintfn "FATAL: %s" message
         Console.WriteLine "Press any key to exit..."
-        Console.ReadKey true |> ignore
+        Console.ReadKey true |> ignore<ConsoleKeyInfo>
         exit 1
 
     [<EntryPoint>]
