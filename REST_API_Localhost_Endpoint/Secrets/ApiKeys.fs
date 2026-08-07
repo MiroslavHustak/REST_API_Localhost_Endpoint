@@ -16,6 +16,7 @@ type Secrets =
 module Secrets =
 
     let private decoder : Decoder<Secrets> =
+
         Decode.object
             (fun get
                 ->
