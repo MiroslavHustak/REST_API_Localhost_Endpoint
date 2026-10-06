@@ -6,12 +6,13 @@ open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Http.Features
 
 open Giraffe
+open Thoth.Json.Net 
 open FsToolkit.ErrorHandling
 
 open Helpers
 
 //----------------------------------------------------------------------------------
-//!!! Copilot-assisted code, code review needed before releasing into production !!!
+// Copilot-assisted code, code review by a human performed on 02-10-2026
 //----------------------------------------------------------------------------------
 
 // Kestrel
@@ -26,11 +27,23 @@ module Handlers =
     
     let private sendResponse (statusCode: int) (message: string) (next: HttpFunc) (ctx : HttpContext) =
 
+        let encodeError message : JsonValue =
+            Encode.object
+                [
+                    "message", Encode.string message
+                ]
+
         async 
             {
                 ctx.Response.StatusCode <- statusCode
                 ctx.Response.ContentType <- "application/json"
-                return! ctx.WriteJsonAsync({| message = message |}) |> Async.AwaitTask
+                
+                let json =
+                    encodeError message
+                    |> Encode.toString 0                // 0 = compact output, 2 = indented
+                       
+                //return! ctx.WriteJsonAsync({| message = message |}) |> Async.AwaitTask
+                return! ctx.WriteStringAsync json  |> Async.AwaitTask  
             }
     
     let private getSafeFileName (formFile: IFormFile) =

@@ -30,9 +30,9 @@ let getLocalIPv4 () : string =  //try with je v main
     |> Option.bind 
         (
             function
-            | :? IPEndPoint as ep 
-                -> Some ep                       
-            | _ -> None
+                | :? IPEndPoint as ep 
+                    -> Some ep                       
+                | _ -> None
         )
     |> Option.map (fun ep -> ep.Address.ToString() |> Option.ofNull') // vyjimecne ponechavam ToString(), bo nevim, jak to vnitrne je, jinak by stacil string ep.Address, coz automaticky zrusi null  
     |> Option.flatten

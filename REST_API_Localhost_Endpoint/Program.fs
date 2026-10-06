@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Server.Kestrel.Core
 open Microsoft.Extensions.DependencyInjection
@@ -15,7 +16,7 @@ open Helpers
 open ApiKeys.Secrets
 
 //----------------------------------------------------------------------------------
-// Copilot-assisted code, code review by a human performed on 06-10-2026
+// Copilot-assisted code, code review by a human performed on 02-10-2026
 //----------------------------------------------------------------------------------
 
 // KESTREL
@@ -40,7 +41,7 @@ module Program =
 
                     match! loadApiKeyAsync apiKeySecretsPath with
                     | Ok secrets 
-                        when not (String.IsNullOrWhiteSpace secrets.ApiKey) 
+                        when not << String.IsNullOrWhiteSpace <| secrets.ApiKey 
                         -> return secrets.ApiKey
                     | _ -> return failFast "Could not load API key from secrets.json — refusing to start"
                 }
@@ -65,15 +66,15 @@ module Program =
 
             // vyukova poznamka: kdybych pouzil defaultValue: defaultValue would take its fallback eagerly, 
             // which would mean failFast "Local IPv4 address resolved to empty..." got evaluated (and the process killed) on every run, Some/None regardless, since F# evaluates function arguments before applying
-                           
-        let encodeError message : JsonValue =
-            Encode.object
-                [
-                    "message", Encode.string message
-                ]
-
+                       
         // GIRAFFE
         let validateApiKey (next: HttpFunc) (ctx: HttpContext) =
+
+            let encodeError message : JsonValue =
+                Encode.object
+                    [
+                        "message", Encode.string message
+                    ]
         
             task
                 {
