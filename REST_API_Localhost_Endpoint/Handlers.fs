@@ -43,46 +43,52 @@ module Handlers =
                     |> Encode.toString 0                // 0 = compact output, 2 = indented
                        
                 //return! ctx.WriteJsonAsync({| message = message |}) |> Async.AwaitTask
-                return! ctx.WriteStringAsync json  |> Async.AwaitTask  
+                return! ctx.WriteStringAsync json |> Async.AwaitTask  
             }
     
     let private getSafeFileName (formFile: IFormFile) =
         
-        try            
-            let rawName =            
-                formFile.Name 
+        try       
+            try
+                formFile.FileName 
                 |> Option.ofNullEmptySpace 
-                |> Option.defaultValue formFile.FileName    
-    
-            let sanitized =
-                try
-                    rawName
-                    |> Path.GetFileName
-                    |> Option.ofNullEmptySpace
-                    |> Option.defaultValue "upload_unknown.zip"
-                    |> fun name 
-                        ->
-                        name.Trim()
-                        |> Seq.map 
-                            (fun c 
-                                -> 
-                                match c with
-                                | c when Char.IsLetterOrDigit c || c = '.' || c = '-' || c = '_'
-                                    -> c
-                                | _ -> '_'
-                            )
-                        |> System.String.Concat
-                with
-                | _ -> rawName
-    
-            match Path.GetExtension(sanitized).ToLowerInvariant() with
-            | ".zip" -> Ok sanitized
-            | _      -> Ok <| sprintf "%s%s" sanitized ".zip"
+                |> Option.defaultValue formFile.FileName
+                |> Path.GetFileName
+                |> Option.ofNullEmptySpace
+                |> Option.defaultValue "upload_unknown.zip"
+                |> fun name 
+                    ->
+                    name.Trim()
+                    |> Seq.map 
+                        (fun c 
+                            -> 
+                            //[BCL] Char.IsLetterOrDigit = Unicode letters/digits (so "ž" or "ö" are allowed as well);
+                            match c with
+                            | c when Char.IsLetterOrDigit c || c = '.' || c = '-' || c = '_'
+                                -> c
+                            | _ -> '_'  //everything else (space, : \ / < > | ? * quotes, control chars...) becomes '_'
+                        )
+                    |> System.String.Concat
+                    |> Ok
+            with
+            | ex -> Error <| NoSafeName (string ex.Message) 
+
+            |> function
+                | Ok sanitized 
+                    ->    
+                    match Path.GetExtension(sanitized).ToLowerInvariant() with
+                    | ".zip" -> Ok sanitized
+                    | _      -> Ok <| sprintf "%s%s" sanitized ".zip" //Only renaming, content is not verified to be a zip
+
+                 | Error err
+                     -> 
+                     Error err  
 
         with
         | ex -> Error <| NoSafeName (string ex.Message) 
     
-    let internal uploadHandler (uploadDir: string) : HttpHandler =
+    // GIRAFFE 
+    let internal uploadHandler (uploadDir: string) : HttpHandler =  
 
         fun (next: HttpFunc) (ctx: HttpContext)
             ->
@@ -91,24 +97,31 @@ module Handlers =
                     let! result = 
                         asyncResult 
                             {
-                                do! 
+                                // [FEATURES] 
+                                do!                                  
+                                   // per-request Kestrel feature (null if the server does not support it)
+                                   // https://learn.microsoft.com/en-us/aspnet/core/fundamentals/request-features?view=aspnetcore-10.0
                                     match ctx.Features.Get<IHttpMaxRequestBodySizeFeature>() |> Option.ofNull' with
                                     | Some feature
                                         ->
-                                        feature.MaxRequestBodySize <- System.Nullable 1_000_000_000L //App-defined upload cap; Kestrel itself allows any value or null for unlimited
+                                        //Toto se bije s limitem v program.fs TODO: mrkni se na to
+                                        feature.MaxRequestBodySize <- 1_000_000_000L //App-defined upload cap; Kestrel itself allows any value or null for unlimited
                                         Ok ()
                                     | None
                                         -> 
                                         Ok ()
     
-                                let formOptions = FormOptions(MultipartBodyLengthLimit = 1_000_000_000L)  //Multipart body limit
+                                let formOptions = FormOptions(MultipartBodyLengthLimit = 1_000_000_000L)  //ASP.NET Core's own form limit (default 128 MB), separate from Kestrel's
+                                
+                                // [FEATURES] replacing the request's form parser with one using our options,
                                 ctx.Features.Set<IFormFeature>(FormFeature(ctx.Request, formOptions))
     
                                 do! 
                                     ctx.Request.HasFormContentType
                                     |> Option.ofBool
                                     |> Option.toResult (NoFormContent "Expected multipart/form-data")
-    
+                                
+                                // [UPLOADS] https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads
                                 let! form =
                                     ctx.Request.ReadFormAsync()
                                     |> Async.AwaitTask
@@ -153,18 +166,14 @@ module Handlers =
                         ->
                         return! ctx.WriteJsonAsync data |> Async.AwaitTask
 
-                    | Error (NoSafeName msg | NoFormContent msg)  
+                    | Error (NoSafeName msg | NoFormContent msg | NoFileReceived msg)  
                         ->
-                        return! sendResponse 415 msg next ctx    
-    
-                    | Error (NoFileReceived msg) 
-                        ->
-                        return! sendResponse 400 msg next ctx
-    
+                        return! sendResponse 400 msg next ctx        
+                      
                     | Error (UploadFailed msg | InvalidPath msg)
                         ->
                         eprintfn "Upload error: %s" msg
-                        return! sendResponse 500 msg next ctx
+                        return! sendResponse 400 msg next ctx
                 }
 
             |> Async.StartImmediateAsTask

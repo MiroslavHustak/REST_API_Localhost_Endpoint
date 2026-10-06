@@ -127,7 +127,7 @@ module Program =
                                     services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>
                                         (fun (options: KestrelServerOptions) 
                                             ->
-                                            //The default is about 30 MB (30,000,000 bytes)
+                                            // The default is about 30 MB (30,000,000 bytes)
                                             // A larger body is rejected with 413 Payload Too Large. 
                                             // options.Limits.MaxRequestBodySize <- Nullable() removes the limit entirely.
                                             options.Limits.MaxRequestBodySize <- 1_000_000_000L 
