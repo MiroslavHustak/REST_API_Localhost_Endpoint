@@ -12,7 +12,7 @@ open FsToolkit.ErrorHandling
 open Helpers
 
 //----------------------------------------------------------------------------------
-// Copilot-assisted code, code review by a human performed on 02-10-2026
+// Copilot-assisted code, code review and total revamp by a human performed on 02-10-2026
 //----------------------------------------------------------------------------------
 
 // Kestrel
