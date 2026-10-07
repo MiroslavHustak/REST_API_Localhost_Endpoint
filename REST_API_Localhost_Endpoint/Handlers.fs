@@ -12,7 +12,7 @@ open FsToolkit.ErrorHandling
 open Helpers
 
 //----------------------------------------------------------------------------------
-// Copilot-assisted code, code review and total revamp by a human performed on 02-10-2026
+// Copilot-assisted code; code review and complete revamp performed by a human on Oct 02, 2026
 //----------------------------------------------------------------------------------
 
 // Kestrel
@@ -24,64 +24,64 @@ module Handlers =
         | UploadFailed   of string
         | InvalidPath    of string  
         | NoSafeName     of string  
-    
-    let private sendResponse (statusCode: int) (message: string) (next: HttpFunc) (ctx : HttpContext) =
 
-        let encodeError message : JsonValue =
-            Encode.object
-                [
-                    "message", Encode.string message
-                ]
+    let private encodeError (message: string) : JsonValue =
+        Encode.object
+            [
+                "message", Encode.string message
+            ]
+
+    let private encodeSuccess (fileName: string) (sizeKb: int64) (savedTo: string) : JsonValue =
+        Encode.object
+            [
+                "message", Encode.string "Upload successful"
+                "file",    Encode.string fileName
+                // Encode.int, NOT Encode.int64: Thoth encodes int64 as a JSON *string*. Upload cap is 1 GB, so KB always fits in int
+                "sizeKb",  Encode.int (int sizeKb)
+            ]
+
+    let private sendJson (statusCode: int) (json: JsonValue) (ctx: HttpContext) =
 
         async 
             {
-                ctx.Response.StatusCode <- statusCode
+                ctx.Response.StatusCode  <- statusCode
                 ctx.Response.ContentType <- "application/json"
                 
-                let json = encodeError message |> Encode.toString 0                // 0 = compact output, 2 = indented
-                       
-                //return! ctx.WriteJsonAsync({| message = message |}) |> Async.AwaitTask //prohibited (reflection)
-                return! ctx.WriteStringAsync json |> Async.AwaitTask  
+                // 0 = compact output, 2 = indented
+                return! ctx.WriteStringAsync (Encode.toString 0 json) |> Async.AwaitTask  
             }
-    
+
+    let private sendError (statusCode: int) (message: string) (ctx: HttpContext) =
+
+        sendJson statusCode (encodeError message) ctx
+
+    // file name sanitising    
     let private getSafeFileName (formFile: IFormFile) =
         
         try       
-            try
-                formFile.FileName 
-                |> Option.ofNullEmptySpace 
-                |> Option.defaultValue formFile.FileName
-                |> Path.GetFileName
-                |> Option.ofNullEmptySpace
-                |> Option.defaultValue "upload_unknown.zip"
-                |> fun name 
-                    ->
-                    name.Trim()
-                    |> Seq.map 
-                        (fun c 
-                            -> 
-                            //[BCL] Char.IsLetterOrDigit = Unicode letters/digits (so "ž" or "ö" are allowed as well);
-                            match c with
-                            | c when Char.IsLetterOrDigit c || c = '.' || c = '-' || c = '_'
-                                -> c
-                            | _ -> '_'  //everything else (space, : \ / < > | ? * quotes, control chars...) becomes '_'
-                        )
-                    |> System.String.Concat
-                    |> Ok
-            with
-            | ex -> Error <| NoSafeName (string ex.Message) 
-
-            |> function
-                | Ok sanitized 
-                    ->    
-                    match Path.GetExtension(sanitized).ToLowerInvariant() with
-                    | ".zip" -> Ok sanitized
-                    | _      -> Ok <| sprintf "%s%s" sanitized ".zip" //Only renaming, content is not verified to be a zip
-
-                 | Error err
-                     -> 
-                     Error err  
-
+            formFile.FileName 
+            |> Path.GetFileName                 // strips directory part; null stays null
+            |> Option.ofNullEmptySpace
+            |> Option.defaultValue "upload_unknown.zip"
+            |> fun name 
+                ->
+                name.Trim()
+                |> Seq.map 
+                    (fun c 
+                        -> 
+                        //[BCL] Char.IsLetterOrDigit = Unicode letters/digits (so "ž" or "ö" are allowed as well);
+                        match c with
+                        | c when Char.IsLetterOrDigit c || c = '.' || c = '-' || c = '_'
+                            -> c
+                        | _ -> '_'  //everything else (space, : \ / < > | ? * quotes, control chars...) becomes '_'
+                    )
+                |> System.String.Concat
+            |> fun sanitized
+                ->
+                match Path.GetExtension(sanitized).ToLowerInvariant() with
+                | ".zip" -> sanitized
+                | _      -> sprintf "%s%s" sanitized ".zip" //Only renaming, content is not verified to be a zip
+            |> Ok
         with
         | ex -> Error <| NoSafeName (string ex.Message) 
     
@@ -102,7 +102,8 @@ module Handlers =
                                     match ctx.Features.Get<IHttpMaxRequestBodySizeFeature>() |> Option.ofNull' with
                                     | Some feature
                                         ->
-                                        //Toto se bije s limitem v program.fs TODO: mrkni se na to
+                                        // Not a conflict with Program.fs: the global limit applies first, this per-request value
+                                        // overrides it. The global one is redundant (or can be lowered to the default).
                                         feature.MaxRequestBodySize <- 1_000_000_000L //App-defined upload cap; Kestrel itself allows any value or null for unlimited
                                         Ok ()
                                     | None
@@ -119,12 +120,13 @@ module Handlers =
                                     |> Option.ofBool
                                     |> Option.toResult (NoFormContent "Expected multipart/form-data")
                                 
-                                // [UPLOADS] https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads
+                                // [UPLOADS] https://learn.microsoft.com/aspnet/core/mvc/models/file-uploads                               
                                 let! form =
                                     ctx.Request.ReadFormAsync()
                                     |> Async.AwaitTask
                                     |> Async.map Ok
-    
+
+                                 // File to be uploaded
                                 let! file =
                                     match form.Files.Count with
                                     | 0 -> Error (NoFileReceived "No file received")
@@ -132,46 +134,51 @@ module Handlers =
     
                                 let! fileName = getSafeFileName file
     
+                                // [BCL] join directory + sanitised name (no longer able to be rooted or contain separators)  
                                 let destPath = Path.Combine(uploadDir, fileName)
     
-                                let! fullDestPath =
+                                let! fullDestPath = 
                                     try
                                         let fullDest = Path.GetFullPath destPath
-                                        let fullUploadDir = Path.GetFullPath uploadDir
 
+                                        // TODO nekdy otestovat tuto kontrolu stylem PBT a pripadne vyuzit aji jinde 
+                                        let fullUploadDir = 
+                                            Path.GetFullPath uploadDir
+                                            |> Path.TrimEndingDirectorySeparator
+                                            |> fun dir -> dir + string Path.DirectorySeparatorChar
+
+                                        // TODO nekdy otestovat tuto kontrolu stylem PBT a pripadne vyuzit aji jinde 
                                         match fullDest.StartsWith(fullUploadDir, StringComparison.Ordinal) with
                                         | true  -> Ok fullDest
                                         | false -> Error (InvalidPath "Invalid file path - potential directory traversal")
                                     with
                                     | ex -> Error (InvalidPath <| sprintf "Path error: %s" (string ex.Message))
     
+                                // [BCL] `use` disposes at the end of the workflow. FileMode.Create = OVERWRITE existing file silently;
+                                // FileShare.None = exclusive lock. (FileMode.CreateNew would fail instead of overwriting)
                                 use fs = new FileStream(fullDestPath, FileMode.Create, FileAccess.Write, FileShare.None)
                                 
+                                // https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iformfile
                                 do! file.CopyToAsync fs |> Async.AwaitTask
     
-                                return
-                                    {|
-                                        message = "Upload successful"
-                                        file = fileName
-                                        sizeKb = fs.Length / 1024L
-                                        savedTo = fullDestPath
-                                    |}
+                                // FIX: workflow returns the encoded JSON itself
+                                return encodeSuccess fileName (fs.Length / 1024L) fullDestPath
                             }
                         |> AsyncResult.catch (fun ex -> UploadFailed <| string ex.Message)
     
                     match result with
-                    | Ok data 
+                    | Ok json 
                         ->
-                        return! ctx.WriteJsonAsync data |> Async.AwaitTask
+                        return! sendJson 200 json ctx
 
-                    | Error (NoSafeName msg | NoFormContent msg | NoFileReceived msg)  
+                    | Error (NoSafeName msg | NoFormContent msg | NoFileReceived msg | InvalidPath msg)  
                         ->
-                        return! sendResponse 400 msg next ctx        
+                        return! sendError 400 msg ctx        
                       
-                    | Error (UploadFailed msg | InvalidPath msg)
+                    | Error (UploadFailed msg)
                         ->
                         eprintfn "Upload error: %s" msg
-                        return! sendResponse 400 msg next ctx
+                        return! sendError 500 "Upload failed" ctx
                 }
 
             |> Async.StartImmediateAsTask

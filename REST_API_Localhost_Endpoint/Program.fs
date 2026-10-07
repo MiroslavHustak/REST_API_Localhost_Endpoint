@@ -16,7 +16,7 @@ open Helpers
 open ApiKeys.Secrets
 
 //----------------------------------------------------------------------------------
-// Copilot-assisted code, code review and total revamp by a human performed on 02-10-2026
+// Copilot-assisted code; code review and complete revamp performed by a human on Oct 02, 2026
 //----------------------------------------------------------------------------------
 
 // KESTREL
@@ -128,7 +128,7 @@ module Program =
                                             // The default is about 30 MB (30,000,000 bytes)
                                             // A larger body is rejected with 413 Payload Too Large. 
                                             // options.Limits.MaxRequestBodySize <- Nullable() removes the limit entirely.
-                                            options.Limits.MaxRequestBodySize <- 1_000_000_000L //bije se to s tim, co je v module Handlers
+                                            options.Limits.MaxRequestBodySize <- 1_000_000_000L //Tohle je ale stejne prebito tim, co je v modulu Handlers,. takze je vlastne jedno, co tady je
                                         ) 
                                     |> ignore<IServiceCollection>
                                 )
