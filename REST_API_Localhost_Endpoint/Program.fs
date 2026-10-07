@@ -89,11 +89,9 @@ module Program =
                         ctx.Response.StatusCode  <- 401
                         ctx.Response.ContentType <- "application/json; charset=utf-8"
         
-                        let json =
-                            encodeError "Unauthorized: Invalid API Key"
-                            |> Encode.toString 0                // 0 = compact output, 2 = indented
+                        let json = encodeError "Unauthorized: Invalid API Key" |> Encode.toString 0  // 0 = compact output, 2 = indented
                          
-                        // return! ctx.WriteJsonAsync({| message = "Unauthorized: Invalid API Key" |}) 
+                        // return! ctx.WriteJsonAsync({| message = "Unauthorized: Invalid API Key" |}) //prohibited (reflection)
                         // WriteJsonAsync (WriteJSONAsync obj takes an object) gets Json.ISerializer from DI (System.Text.Json by default in Giraffe 5+, Newtonsoft in older versions) 
                         // and serializes the anonymous record via runtime reflection --> Thoth encoders to avoid reflection.
                         return! ctx.WriteStringAsync json       // WriteSTRING... --> writes those bytes as-is
@@ -130,7 +128,7 @@ module Program =
                                             // The default is about 30 MB (30,000,000 bytes)
                                             // A larger body is rejected with 413 Payload Too Large. 
                                             // options.Limits.MaxRequestBodySize <- Nullable() removes the limit entirely.
-                                            options.Limits.MaxRequestBodySize <- 1_000_000_000L 
+                                            options.Limits.MaxRequestBodySize <- 1_000_000_000L //bije se to s tim, co je v module Handlers
                                         ) 
                                     |> ignore<IServiceCollection>
                                 )

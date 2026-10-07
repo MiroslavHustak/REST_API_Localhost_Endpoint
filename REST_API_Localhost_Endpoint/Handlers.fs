@@ -38,11 +38,9 @@ module Handlers =
                 ctx.Response.StatusCode <- statusCode
                 ctx.Response.ContentType <- "application/json"
                 
-                let json =
-                    encodeError message
-                    |> Encode.toString 0                // 0 = compact output, 2 = indented
+                let json = encodeError message |> Encode.toString 0                // 0 = compact output, 2 = indented
                        
-                //return! ctx.WriteJsonAsync({| message = message |}) |> Async.AwaitTask
+                //return! ctx.WriteJsonAsync({| message = message |}) |> Async.AwaitTask //prohibited (reflection)
                 return! ctx.WriteStringAsync json |> Async.AwaitTask  
             }
     
